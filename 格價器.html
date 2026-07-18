@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>格價器 — 惠康 vs 百佳</title>
+<style>
+  :root{
+    --paper:#FAF7F0;
+    --paper-dark:#F1ECE0;
+    --ink:#2B2B26;
+    --ink-soft:#6B665C;
+    --line:#D9D2C2;
+    --wellcome:#1F7A42;
+    --wellcome-soft:#E6F1E9;
+    --parknshop:#C23A2E;
+    --parknshop-soft:#FBEAE7;
+    --amber:#B8791A;
+    --amber-soft:#FBF0DD;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper-dark);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang HK","Microsoft JhengHei",sans-serif;
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding:32px 16px 80px;
+  }
+  .receipt{
+    width:100%;
+    max-width:620px;
+    background:var(--paper);
+    border-radius:2px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.08), 0 12px 32px rgba(0,0,0,0.06);
+    position:relative;
+    overflow:hidden;
+  }
+  .receipt::before, .receipt::after{
+    content:"";
+    position:absolute;
+    left:0; right:0;
+    height:10px;
+    background:
+      radial-gradient(circle at 8px 5px, var(--paper-dark) 5px, transparent 5.5px) repeat-x;
+    background-size:16px 10px;
+  }
+  .receipt::before{ top:-1px; }
+  .receipt::after{ bottom:-1px; transform:rotate(180deg); }
+
+  header{
+    padding:28px 28px 18px;
+    text-align:center;
+    border-bottom:1px dashed var(--line);
+  }
+  .title{
+    font-size:26px;
+    font-weight:800;
+    letter-spacing:0.5px;
+    margin:0;
+  }
+  .subtitle{
+    margin:6px 0 0;
+    font-size:13px;
+    color:var(--ink-soft);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+  }
+  .tag{
+    display:inline-block;
+    padding:2px 8px;
+    border-radius:3px;
+    font-weight:700;
+    font-size:12px;
+  }
+  .tag.wc{ background:var(--wellcome-soft); color:var(--wellcome); }
+  .tag.ps{ background:var(--parknshop-soft); color:var(--parknshop); }
+
+  .summary{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:1px;
+    background:var(--line);
+    border-bottom:1px dashed var(--line);
+  }
+  .summary div{
+    background:var(--paper);
+    padding:14px 8px;
+    text-align:center;
+  }
+  .summary .num{
+    font-family:"SF Mono",Consolas,Menlo,monospace;
+    font-size:20px;
+    font-weight:700;
+  }
+  .summary .lbl{
+    font-size:11px;
+    color:var(--ink-soft);
+    margin-top:2px;
+  }
+
+  form{
+    padding:18px 28px;
+    border-bottom:1px dashed var(--line);
+    display:grid;
+    gap:10px;
+  }
+  .form-row{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .form-row.three{ grid-template-columns:1fr 1fr 1fr; }
+  label{ font-size:11px; color:var(--ink-soft); display:block; margin-bottom:3px; }
+  input{
+    width:100%;
+    padding:8px 10px;
+    border:1px solid var(--line);
+    border-radius:4px;
+    font-size:14px;
+    font-family:inherit;
+    background:#fff;
+  }
+  input:focus{ outline:2px solid var(--amber); outline-offset:0; border-color:var(--amber); }
+  input[type=number]{ font-family:"SF Mono",Consolas,Menlo,monospace; }
+  button{
+    cursor:pointer;
+    border:none;
+    font-family:inherit;
+    font-weight:700;
+  }
+  .add-btn{
+    background:var(--ink);
+    color:var(--paper);
+    padding:10px;
+    border-radius:4px;
+    font-size:14px;
+    letter-spacing:0.3px;
+  }
+  .add-btn:hover{ background:#000; }
+
+  .import-bar{
+    padding:0 28px 18px;
+    border-bottom:1px dashed var(--line);
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .import-btn{
+    display:inline-block;
+    cursor:pointer;
+    background:var(--amber-soft);
+    color:var(--amber);
+    border:1px solid var(--amber);
+    padding:8px 14px;
+    border-radius:4px;
+    font-size:13px;
+    font-weight:700;
+  }
+  .import-btn:hover{ background:var(--amber); color:#fff; }
+  .import-status{
+    font-size:12px;
+    color:var(--ink-soft);
+  }
+
+  .search-bar{
+    padding:14px 28px;
+    border-bottom:1px dashed var(--line);
+  }
+  .search-bar input{
+    background:var(--paper-dark);
+  }
+
+  .items{ padding:8px 0; }
+  .item{
+    padding:14px 28px;
+    border-bottom:1px dashed var(--line);
+    position:relative;
+  }
+  .item:last-child{ border-bottom:none; }
+  .item-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    gap:8px;
+  }
+  .item-name{ font-weight:700; font-size:15px; }
+  .item-actions{ display:flex; gap:10px; }
+  .icon-btn{
+    background:none;
+    color:var(--ink-soft);
+    font-size:12px;
+    font-weight:600;
+    padding:2px 4px;
+  }
+  .icon-btn:hover{ color:var(--ink); }
+  .icon-btn.danger:hover{ color:var(--parknshop); }
+
+  .prices{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin-top:10px;
+  }
+  .price-box{
+    border-radius:4px;
+    padding:8px 10px;
+    position:relative;
+  }
+  .price-box.wc{ background:var(--wellcome-soft); }
+  .price-box.ps{ background:var(--parknshop-soft); }
+  .price-box .store{
+    font-size:11px;
+    font-weight:700;
+  }
+  .price-box.wc .store{ color:var(--wellcome); }
+  .price-box.ps .store{ color:var(--parknshop); }
+  .price-box .price{
+    font-family:"SF Mono",Consolas,Menlo,monospace;
+    font-size:17px;
+    font-weight:700;
+    margin-top:2px;
+  }
+  .price-box .perunit{
+    font-family:"SF Mono",Consolas,Menlo,monospace;
+    font-size:11px;
+    color:var(--ink-soft);
+  }
+  .price-box .promo{
+    margin-top:4px;
+    font-size:11px;
+    font-weight:700;
+    color:var(--amber);
+    background:var(--amber-soft);
+    border-radius:3px;
+    padding:2px 5px;
+    display:inline-block;
+  }
+  .winner-badge{
+    position:absolute;
+    top:6px; right:8px;
+    font-size:10px;
+    font-weight:800;
+    background:var(--amber);
+    color:#fff;
+    padding:1px 6px;
+    border-radius:8px;
+  }
+  .savings-line{
+    margin-top:8px;
+    font-size:12px;
+    color:var(--amber);
+    font-weight:700;
+    text-align:right;
+  }
+
+  .history{
+    margin-top:8px;
+    font-size:11px;
+    color:var(--ink-soft);
+    display:none;
+    padding-top:6px;
+    border-top:1px dotted var(--line);
+  }
+  .history.open{ display:block; }
+  .history-row{
+    display:flex;
+    justify-content:space-between;
+    padding:2px 0;
+    font-family:"SF Mono",Consolas,Menlo,monospace;
+  }
+
+  .empty{
+    padding:40px 28px;
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:13px;
+  }
+
+  footer{
+    padding:14px 28px 22px;
+    text-align:center;
+    font-size:11px;
+    color:var(--ink-soft);
+  }
+</style>
+</head>
+<body>
+<div class="receipt">
+  <header>
+    <p class="title">格價器</p>
+    <p class="subtitle"><span class="tag wc">惠康</span>vs<span class="tag ps">百佳</span></p>
+  </header>
+
+  <div class="summary" id="summary">
+    <div><div class="num" id="sumTotal">0</div><div class="lbl">商品數</div></div>
+    <div><div class="num" id="sumWc">0</div><div class="lbl">惠康平</div></div>
+    <div><div class="num" id="sumPs">0</div><div class="lbl">百佳平</div></div>
+  </div>
+
+  <form id="addForm">
+    <div>
+      <label>商品名稱</label>
+      <input type="text" id="fName" placeholder="例如:維他奶原味 250ml" required>
+    </div>
+    <div class="form-row three">
+      <div>
+        <label>份量</label>
+        <input type="number" id="fQty" placeholder="250" step="any" required>
+      </div>
+      <div>
+        <label>單位</label>
+        <input type="text" id="fUnit" placeholder="ml / g / 件" required>
+      </div>
+      <div></div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label>惠康價錢 ($)</label>
+        <input type="number" id="fWc" placeholder="0.00" step="0.01" required>
+      </div>
+      <div>
+        <label>百佳價錢 ($)</label>
+        <input type="number" id="fPs" placeholder="0.00" step="0.01" required>
+      </div>
+    </div>
+    <button type="submit" class="add-btn">＋ 加入商品</button>
+  </form>
+
+  <div class="import-bar">
+    <label for="importFile" class="import-btn">⤒ 匯入 JSON 檔案(消委會資料)</label>
+    <input type="file" id="importFile" accept="application/json" style="display:none;">
+    <span id="importStatus" class="import-status"></span>
+  </div>
+
+  <div class="search-bar">
+    <input type="text" id="searchBox" placeholder="搜尋商品名稱...">
+  </div>
+  <div class="items" id="itemsList"></div>
+  <div class="empty" id="emptyMsg" style="display:none;">仲未有商品,喺上面加返個先啦</div>
+
+  <footer>資料只儲存喺你自己嘅裝置</footer>
+</div>
+
+<script>
+let products = [];
+const STORAGE_KEY = 'products-v1';
+
+async function load(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY);
+    products = res && res.value ? JSON.parse(res.value) : [];
+  }catch(e){
+    products = [];
+  }
+  render();
+}
+
+async function save(){
+  try{
+    await window.storage.set(STORAGE_KEY, JSON.stringify(products));
+  }catch(e){
+    console.error('儲存失敗', e);
+  }
+}
+
+function fmt(n){
+  return '$' + Number(n).toFixed(2);
+}
+
+function perUnit(price, qty){
+  if(!qty) return 0;
+  return price / qty;
+}
+
+function render(){
+  const list = document.getElementById('itemsList');
+  const empty = document.getElementById('emptyMsg');
+  list.innerHTML = '';
+
+  const term = (document.getElementById('searchBox').value || '').trim().toLowerCase();
+  const visibleIndexes = products
+    .map((p, idx) => idx)
+    .filter(idx => !term || products[idx].name.toLowerCase().includes(term));
+
+  if(products.length === 0){
+    empty.style.display = 'block';
+    empty.textContent = '仲未有商品,喺上面加返個先啦';
+  }else if(visibleIndexes.length === 0){
+    empty.style.display = 'block';
+    empty.textContent = '搵唔到相關商品';
+  }else{
+    empty.style.display = 'none';
+  }
+
+  let wcWins = 0, psWins = 0;
+  products.forEach((p) => {
+    const wcPU = perUnit(p.wc, p.qty);
+    const psPU = perUnit(p.ps, p.qty);
+    if(wcPU < psPU) wcWins++;
+    if(psPU < wcPU) psWins++;
+  });
+
+  visibleIndexes.forEach((idx) => {
+    const p = products[idx];
+    const wcPU = perUnit(p.wc, p.qty);
+    const psPU = perUnit(p.ps, p.qty);
+    const wcCheaper = wcPU < psPU;
+    const psCheaper = psPU < wcPU;
+
+    const diff = Math.abs(wcPU - psPU);
+    const base = Math.max(wcPU, psPU) || 1;
+    const pct = ((diff / base) * 100).toFixed(1);
+
+    const el = document.createElement('div');
+    el.className = 'item';
+
+    const historyHtml = (p.history || []).map(h =>
+      `<div class="history-row"><span>${h.date}</span><span>惠康 ${fmt(h.wc)} ／ 百佳 ${fmt(h.ps)}</span></div>`
+    ).join('');
+
+    el.innerHTML = `
+      <div class="item-top">
+        <div class="item-name">${p.name}</div>
+        <div class="item-actions">
+          <button class="icon-btn" data-action="history" data-idx="${idx}">歷史</button>
+          <button class="icon-btn" data-action="update" data-idx="${idx}">更新價錢</button>
+          <button class="icon-btn danger" data-action="delete" data-idx="${idx}">刪除</button>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">${p.qty}${p.unit}</div>
+      <div class="prices">
+        <div class="price-box wc">
+          ${wcCheaper ? '<div class="winner-badge">平</div>' : ''}
+          <div class="store">惠康</div>
+          <div class="price">${fmt(p.wc)}</div>
+          <div class="perunit">$${wcPU.toFixed(3)}/${p.unit}</div>
+          ${p.wcPromo ? `<div class="promo">${p.wcPromo}</div>` : ''}
+        </div>
+        <div class="price-box ps">
+          ${psCheaper ? '<div class="winner-badge">平</div>' : ''}
+          <div class="store">百佳</div>
+          <div class="price">${fmt(p.ps)}</div>
+          <div class="perunit">$${psPU.toFixed(3)}/${p.unit}</div>
+          ${p.psPromo ? `<div class="promo">${p.psPromo}</div>` : ''}
+        </div>
+      </div>
+      ${diff > 0 ? `<div class="savings-line">${wcCheaper ? '惠康' : '百佳'}平 ${pct}%</div>` : ''}
+      <div class="history" id="hist-${idx}">${historyHtml || '<div style="text-align:center;">未有歷史記錄</div>'}</div>
+    `;
+    list.appendChild(el);
+  });
+
+  document.getElementById('sumTotal').textContent = products.length;
+  document.getElementById('sumWc').textContent = wcWins;
+  document.getElementById('sumPs').textContent = psWins;
+
+  list.querySelectorAll('[data-action]').forEach(btn => {
+    btn.addEventListener('click', onAction);
+  });
+}
+
+function onAction(e){
+  const idx = Number(e.currentTarget.dataset.idx);
+  const action = e.currentTarget.dataset.action;
+  if(action === 'delete'){
+    if(confirm(`刪除「${products[idx].name}」?`)){
+      products.splice(idx, 1);
+      save();
+      render();
+    }
+  }else if(action === 'history'){
+    const histEl = document.getElementById(`hist-${idx}`);
+    histEl.classList.toggle('open');
+  }else if(action === 'update'){
+    const p = products[idx];
+    const newWc = prompt(`更新「${p.name}」惠康價錢`, p.wc);
+    if(newWc === null) return;
+    const newPs = prompt(`更新「${p.name}」百佳價錢`, p.ps);
+    if(newPs === null) return;
+
+    const wcNum = parseFloat(newWc);
+    const psNum = parseFloat(newPs);
+    if(isNaN(wcNum) || isNaN(psNum)){
+      alert('價錢格式有問題');
+      return;
+    }
+
+    if(!p.history) p.history = [];
+    p.history.unshift({
+      date: new Date().toISOString().slice(0,10),
+      wc: p.wc,
+      ps: p.ps
+    });
+    p.wc = wcNum;
+    p.ps = psNum;
+    save();
+    render();
+  }
+}
+
+document.getElementById('addForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = document.getElementById('fName').value.trim();
+  const qty = parseFloat(document.getElementById('fQty').value);
+  const unit = document.getElementById('fUnit').value.trim();
+  const wc = parseFloat(document.getElementById('fWc').value);
+  const ps = parseFloat(document.getElementById('fPs').value);
+
+  if(!name || !unit || isNaN(qty) || isNaN(wc) || isNaN(ps)){
+    alert('請填晒所有欄位');
+    return;
+  }
+
+  products.unshift({
+    name, qty, unit, wc, ps,
+    history: [],
+    addedAt: new Date().toISOString().slice(0,10)
+  });
+
+  await save();
+  render();
+  e.target.reset();
+});
+
+document.getElementById('searchBox').addEventListener('input', () => {
+  render();
+});
+
+document.getElementById('importFile').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  const statusEl = document.getElementById('importStatus');
+  if(!file) return;
+
+  statusEl.textContent = '讀取緊...';
+
+  try{
+    const text = await file.text();
+    const imported = JSON.parse(text);
+    if(!Array.isArray(imported)) throw new Error('格式唔啱');
+
+    const byName = new Map(products.map((p, idx) => [p.name, idx]));
+    let addedCount = 0;
+    let updatedCount = 0;
+    let unchangedCount = 0;
+    let skippedCount = 0;
+
+    imported.forEach(item => {
+      if(!item.name || typeof item.wc !== 'number' || typeof item.ps !== 'number'){
+        skippedCount++;
+        return;
+      }
+
+      if(byName.has(item.name)){
+        const p = products[byName.get(item.name)];
+        const priceChanged = (p.wc !== item.wc) || (p.ps !== item.ps);
+
+        if(priceChanged){
+          if(!p.history) p.history = [];
+          p.history.unshift({
+            date: p.lastUpdated || p.addedAt || '未知日期',
+            wc: p.wc,
+            ps: p.ps
+          });
+          p.wc = item.wc;
+          p.ps = item.ps;
+          p.lastUpdated = item.addedAt || new Date().toISOString().slice(0,10);
+          updatedCount++;
+        }else{
+          unchangedCount++;
+        }
+        p.wcPromo = item.wcPromo || '';
+        p.psPromo = item.psPromo || '';
+        p.qty = item.qty || p.qty || 1;
+        p.unit = item.unit || p.unit || '件';
+      }else{
+        products.push({
+          name: item.name,
+          qty: item.qty || 1,
+          unit: item.unit || '件',
+          wc: item.wc,
+          ps: item.ps,
+          wcPromo: item.wcPromo || '',
+          psPromo: item.psPromo || '',
+          history: item.history || [],
+          addedAt: item.addedAt || new Date().toISOString().slice(0,10),
+          lastUpdated: item.addedAt || new Date().toISOString().slice(0,10)
+        });
+        byName.set(item.name, products.length - 1);
+        addedCount++;
+      }
+    });
+
+    await save();
+    render();
+    statusEl.textContent = `匯入完成:新增 ${addedCount} 件,更新價錢 ${updatedCount} 件,無變動 ${unchangedCount} 件,跳過 ${skippedCount} 件`;
+  }catch(err){
+    statusEl.textContent = '匯入失敗:檔案格式有問題';
+    console.error(err);
+  }
+
+  e.target.value = '';
+});
+
+load();
+</script>
+</body>
+</html>
