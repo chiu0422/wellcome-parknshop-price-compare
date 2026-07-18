@@ -1,0 +1,33 @@
+name: 每日更新格價
+
+on:
+  schedule:
+    # 每日香港時間早上 8:00 (UTC 0:00)
+    - cron: '0 0 * * *'
+  workflow_dispatch: {}   # 俾你可以喺 GitHub 網頁度手動撳掣即刻跑一次
+
+permissions:
+  contents: write
+
+jobs:
+  update-price:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 取得repo內容
+        uses: actions/checkout@v4
+
+      - name: 安裝Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: 執行格價更新程式
+        run: python 更新格價.py
+
+      - name: 提交更新咗嘅JSON(如果有變動)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add wellcome_parknshop_import.json
+          git diff --staged --quiet && echo "冇價錢變動,唔使commit" || git commit -m "自動更新格價 $(date -u +'%Y-%m-%d')"
+          git push
