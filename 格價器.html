@@ -500,6 +500,62 @@ function onAction(e){
   }
 }
 
+function mergeImportedProducts(imported){
+  const byName = new Map(products.map((p, idx) => [p.name, idx]));
+  let addedCount = 0;
+  let updatedCount = 0;
+  let unchangedCount = 0;
+  let skippedCount = 0;
+
+  imported.forEach(item => {
+    if(!item.name || typeof item.wc !== 'number' || typeof item.ps !== 'number'){
+      skippedCount++;
+      return;
+    }
+
+    if(byName.has(item.name)){
+      const p = products[byName.get(item.name)];
+      const priceChanged = (p.wc !== item.wc) || (p.ps !== item.ps);
+
+      if(priceChanged){
+        if(!p.history) p.history = [];
+        p.history.unshift({
+          date: p.lastUpdated || p.addedAt || '未知日期',
+          wc: p.wc,
+          ps: p.ps
+        });
+        p.wc = item.wc;
+        p.ps = item.ps;
+        p.lastUpdated = item.addedAt || new Date().toISOString().slice(0,10);
+        updatedCount++;
+      }else{
+        unchangedCount++;
+      }
+      p.wcPromo = item.wcPromo || '';
+      p.psPromo = item.psPromo || '';
+      p.qty = item.qty || p.qty || 1;
+      p.unit = item.unit || p.unit || '件';
+    }else{
+      products.push({
+        name: item.name,
+        qty: item.qty || 1,
+        unit: item.unit || '件',
+        wc: item.wc,
+        ps: item.ps,
+        wcPromo: item.wcPromo || '',
+        psPromo: item.psPromo || '',
+        history: item.history || [],
+        addedAt: item.addedAt || new Date().toISOString().slice(0,10),
+        lastUpdated: item.addedAt || new Date().toISOString().slice(0,10)
+      });
+      byName.set(item.name, products.length - 1);
+      addedCount++;
+    }
+  });
+
+  return { addedCount, updatedCount, unchangedCount, skippedCount };
+}
+
 document.getElementById('addForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const name = document.getElementById('fName').value.trim();
@@ -540,57 +596,7 @@ document.getElementById('importFile').addEventListener('change', async (e) => {
     const imported = JSON.parse(text);
     if(!Array.isArray(imported)) throw new Error('格式唔啱');
 
-    const byName = new Map(products.map((p, idx) => [p.name, idx]));
-    let addedCount = 0;
-    let updatedCount = 0;
-    let unchangedCount = 0;
-    let skippedCount = 0;
-
-    imported.forEach(item => {
-      if(!item.name || typeof item.wc !== 'number' || typeof item.ps !== 'number'){
-        skippedCount++;
-        return;
-      }
-
-      if(byName.has(item.name)){
-        const p = products[byName.get(item.name)];
-        const priceChanged = (p.wc !== item.wc) || (p.ps !== item.ps);
-
-        if(priceChanged){
-          if(!p.history) p.history = [];
-          p.history.unshift({
-            date: p.lastUpdated || p.addedAt || '未知日期',
-            wc: p.wc,
-            ps: p.ps
-          });
-          p.wc = item.wc;
-          p.ps = item.ps;
-          p.lastUpdated = item.addedAt || new Date().toISOString().slice(0,10);
-          updatedCount++;
-        }else{
-          unchangedCount++;
-        }
-        p.wcPromo = item.wcPromo || '';
-        p.psPromo = item.psPromo || '';
-        p.qty = item.qty || p.qty || 1;
-        p.unit = item.unit || p.unit || '件';
-      }else{
-        products.push({
-          name: item.name,
-          qty: item.qty || 1,
-          unit: item.unit || '件',
-          wc: item.wc,
-          ps: item.ps,
-          wcPromo: item.wcPromo || '',
-          psPromo: item.psPromo || '',
-          history: item.history || [],
-          addedAt: item.addedAt || new Date().toISOString().slice(0,10),
-          lastUpdated: item.addedAt || new Date().toISOString().slice(0,10)
-        });
-        byName.set(item.name, products.length - 1);
-        addedCount++;
-      }
-    });
+    const { addedCount, updatedCount, unchangedCount, skippedCount } = mergeImportedProducts(imported);
 
     await save();
     render();
@@ -603,7 +609,29 @@ document.getElementById('importFile').addEventListener('change', async (e) => {
   e.target.value = '';
 });
 
-load();
+async function autoFetchLatest(){
+  const statusEl = document.getElementById('importStatus');
+  try{
+    const res = await fetch('./wellcome_parknshop_import.json', { cache: 'no-store' });
+    if(!res.ok) return;
+    const imported = await res.json();
+    if(!Array.isArray(imported)) return;
+
+    const { addedCount, updatedCount } = mergeImportedProducts(imported);
+    if(addedCount > 0 || updatedCount > 0){
+      await save();
+      render();
+    }
+    if(statusEl){
+      statusEl.textContent = `已自動同步最新價錢(新增 ${addedCount},更新 ${updatedCount})`;
+    }
+  }catch(e){
+    // 開喺本機檔案或者搵唔到JSON時靜靜地跳過,唔阻住個工具用
+    console.log('自動同步跳過:', e.message);
+  }
+}
+
+load().then(autoFetchLatest);
 </script>
 </body>
 </html>
