@@ -140,7 +140,7 @@
   .add-btn:hover{ background:#000; }
 
   .import-bar{
-    padding:0 28px 18px;
+    padding:18px 28px;
     border-bottom:1px dashed var(--line);
     display:flex;
     align-items:center;
@@ -304,35 +304,6 @@
     <div><div class="num" id="sumWc">0</div><div class="lbl">惠康平</div></div>
     <div><div class="num" id="sumPs">0</div><div class="lbl">百佳平</div></div>
   </div>
-
-  <form id="addForm">
-    <div>
-      <label>商品名稱</label>
-      <input type="text" id="fName" placeholder="例如:維他奶原味 250ml" required>
-    </div>
-    <div class="form-row three">
-      <div>
-        <label>份量</label>
-        <input type="number" id="fQty" placeholder="250" step="any" required>
-      </div>
-      <div>
-        <label>單位</label>
-        <input type="text" id="fUnit" placeholder="ml / g / 件" required>
-      </div>
-      <div></div>
-    </div>
-    <div class="form-row">
-      <div>
-        <label>惠康價錢 ($)</label>
-        <input type="number" id="fWc" placeholder="0.00" step="0.01" required>
-      </div>
-      <div>
-        <label>百佳價錢 ($)</label>
-        <input type="number" id="fPs" placeholder="0.00" step="0.01" required>
-      </div>
-    </div>
-    <button type="submit" class="add-btn">＋ 加入商品</button>
-  </form>
 
   <div class="import-bar">
     <label for="importFile" class="import-btn">⤒ 匯入 JSON 檔案(消委會資料)</label>
@@ -634,30 +605,6 @@ function mergeImportedProducts(imported){
 
   return { addedCount, updatedCount, unchangedCount, skippedCount };
 }
-
-document.getElementById('addForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const name = document.getElementById('fName').value.trim();
-  const qty = parseFloat(document.getElementById('fQty').value);
-  const unit = document.getElementById('fUnit').value.trim();
-  const wc = parseFloat(document.getElementById('fWc').value);
-  const ps = parseFloat(document.getElementById('fPs').value);
-
-  if(!name || !unit || isNaN(qty) || isNaN(wc) || isNaN(ps)){
-    alert('請填晒所有欄位');
-    return;
-  }
-
-  products.unshift({
-    name, qty, unit, wc, ps,
-    history: [],
-    addedAt: new Date().toISOString().slice(0,10)
-  });
-
-  await save();
-  render();
-  e.target.reset();
-});
 
 document.getElementById('searchBox').addEventListener('input', () => {
   render();
