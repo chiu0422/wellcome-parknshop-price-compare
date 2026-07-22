@@ -237,6 +237,12 @@
     padding:2px 5px;
     display:inline-block;
   }
+  .price-box .effective{
+    margin-top:4px;
+    font-size:11px;
+    font-weight:700;
+    color:var(--ink);
+  }
   .winner-badge{
     position:absolute;
     top:6px; right:8px;
@@ -374,6 +380,71 @@ function perUnit(price, qty){
   return price / qty;
 }
 
+// 解讀優惠字句,計出「優惠後每件實際價錢」。有識到就回傳數字,唔識就回傳 null(用返原價)
+function parsePromoEffectivePrice(promoText, basePrice){
+  if(!promoText) return null;
+  const t = promoText.trim();
+  let m;
+
+  // $X任揀N件 (任揀N件總共$X)
+  m = t.match(/\$([\d.]+)任揀(\d+)件/);
+  if(m) return parseFloat(m[1]) / parseInt(m[2]);
+
+  // 買N件慳$X
+  m = t.match(/買(\d+)件慳\$([\d.]+)/);
+  if(m){
+    const n = parseInt(m[1]), save = parseFloat(m[2]);
+    return (basePrice * n - save) / n;
+  }
+
+  // 買N件只需$X / 買N件$X (總價)
+  m = t.match(/買(\d+)件(?:只需)?\$([\d.]+)/);
+  if(m){
+    const n = parseInt(m[1]), total = parseFloat(m[2]);
+    return total / n;
+  }
+
+  // 買N件送M件 / 買N送M (包括前面有其他文字的情況)
+  m = t.match(/買(\d+)件?送(\d+)件?/);
+  if(m){
+    const buy = parseInt(m[1]), free = parseInt(m[2]);
+    return (basePrice * buy) / (buy + free);
+  }
+
+  // 第二件 / 買第二件 P%折扣
+  m = t.match(/第二件(?:享)?(\d+)%折扣/);
+  if(m){
+    const pct = parseInt(m[1]);
+    return basePrice * (1 + (1 - pct / 100)) / 2;
+  }
+  // 第二件半價
+  if(/第二件.*半價/.test(t)){
+    return basePrice * 1.5 / 2;
+  }
+
+  // 買N件享P%折扣
+  m = t.match(/買(\d+)件(?:或以上)?(?:享)?(\d+)%折扣/);
+  if(m){
+    const n = parseInt(m[1]), pct = parseInt(m[2]);
+    return basePrice * (1 - pct / 100);
+  }
+
+  // 買N件或以上P折 / 買N件P折 (中式「折」:9折=90%,75折=75%)
+  m = t.match(/買(\d+)件(?:或以上)?(\d+(?:\.\d+)?)折/);
+  if(m){
+    const foldNum = parseFloat(m[2]);
+    const pct = foldNum >= 10 ? foldNum : foldNum * 10;
+    return basePrice * (pct / 100);
+  }
+
+  return null;
+}
+
+function effectivePrice(basePrice, promoText){
+  const p = parsePromoEffectivePrice(promoText, basePrice);
+  return (p !== null && !isNaN(p) && p > 0) ? p : basePrice;
+}
+
 function render(){
   const list = document.getElementById('itemsList');
   const empty = document.getElementById('emptyMsg');
@@ -396,16 +467,22 @@ function render(){
 
   let wcWins = 0, psWins = 0;
   products.forEach((p) => {
-    const wcPU = perUnit(p.wc, p.qty);
-    const psPU = perUnit(p.ps, p.qty);
+    const wcEff = effectivePrice(p.wc, p.wcPromo);
+    const psEff = effectivePrice(p.ps, p.psPromo);
+    const wcPU = perUnit(wcEff, p.qty);
+    const psPU = perUnit(psEff, p.qty);
     if(wcPU < psPU) wcWins++;
     if(psPU < wcPU) psWins++;
   });
 
   visibleIndexes.forEach((idx) => {
     const p = products[idx];
-    const wcPU = perUnit(p.wc, p.qty);
-    const psPU = perUnit(p.ps, p.qty);
+    const wcEff = effectivePrice(p.wc, p.wcPromo);
+    const psEff = effectivePrice(p.ps, p.psPromo);
+    const wcPromoApplied = wcEff !== p.wc;
+    const psPromoApplied = psEff !== p.ps;
+    const wcPU = perUnit(wcEff, p.qty);
+    const psPU = perUnit(psEff, p.qty);
     const wcCheaper = wcPU < psPU;
     const psCheaper = psPU < wcPU;
 
@@ -435,18 +512,20 @@ function render(){
           ${wcCheaper ? '<div class="winner-badge">平</div>' : ''}
           <div class="store">惠康</div>
           <div class="price">${fmt(p.wc)}</div>
-          <div class="perunit">$${wcPU.toFixed(3)}/${p.unit}</div>
+          <div class="perunit">$${perUnit(p.wc, p.qty).toFixed(3)}/${p.unit}</div>
           ${p.wcPromo ? `<div class="promo">${p.wcPromo}</div>` : ''}
+          ${wcPromoApplied ? `<div class="effective">優惠後每件 ${fmt(wcEff)}(${wcPU.toFixed(3)}/${p.unit})</div>` : ''}
         </div>
         <div class="price-box ps">
           ${psCheaper ? '<div class="winner-badge">平</div>' : ''}
           <div class="store">百佳</div>
           <div class="price">${fmt(p.ps)}</div>
-          <div class="perunit">$${psPU.toFixed(3)}/${p.unit}</div>
+          <div class="perunit">$${perUnit(p.ps, p.qty).toFixed(3)}/${p.unit}</div>
           ${p.psPromo ? `<div class="promo">${p.psPromo}</div>` : ''}
+          ${psPromoApplied ? `<div class="effective">優惠後每件 ${fmt(psEff)}(${psPU.toFixed(3)}/${p.unit})</div>` : ''}
         </div>
       </div>
-      ${diff > 0 ? `<div class="savings-line">${wcCheaper ? '惠康' : '百佳'}平 ${pct}%</div>` : ''}
+      ${diff > 0 ? `<div class="savings-line">${wcCheaper ? '惠康' : '百佳'}平 ${pct}%${(wcPromoApplied||psPromoApplied) ? '(已計埋優惠)' : ''}</div>` : ''}
       <div class="history" id="hist-${idx}">${historyHtml || '<div style="text-align:center;">未有歷史記錄</div>'}</div>
     `;
     list.appendChild(el);
