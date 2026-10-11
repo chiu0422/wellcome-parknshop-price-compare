@@ -167,9 +167,33 @@
   .search-bar{
     padding:14px 28px;
     border-bottom:1px dashed var(--line);
+    display:flex;
+    gap:8px;
   }
   .search-bar input{
     background:var(--paper-dark);
+    flex:1;
+  }
+  .fav-filter-btn{
+    background:var(--paper-dark);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:0 12px;
+    font-size:12px;
+    font-weight:700;
+    color:var(--ink-soft);
+    white-space:nowrap;
+  }
+  .fav-filter-btn.active{
+    background:var(--amber-soft);
+    border-color:var(--amber);
+    color:var(--amber);
+  }
+  .star-btn{
+    background:none;
+    font-size:15px;
+    line-height:1;
+    padding:0 2px;
   }
 
   .items{ padding:8px 0; }
@@ -313,6 +337,7 @@
 
   <div class="search-bar">
     <input type="text" id="searchBox" placeholder="搜尋商品名稱...">
+    <button type="button" id="favFilterBtn" class="fav-filter-btn">⭐ 只看最愛</button>
   </div>
   <div class="items" id="itemsList"></div>
   <div class="empty" id="emptyMsg" style="display:none;">仲未有商品,喺上面加返個先啦</div>
@@ -422,16 +447,25 @@ function render(){
   list.innerHTML = '';
 
   const term = (document.getElementById('searchBox').value || '').trim().toLowerCase();
-  const visibleIndexes = products
+  const favOnly = document.getElementById('favFilterBtn').classList.contains('active');
+  let visibleIndexes = products
     .map((p, idx) => idx)
-    .filter(idx => !term || products[idx].name.toLowerCase().includes(term));
+    .filter(idx => !term || products[idx].name.toLowerCase().includes(term))
+    .filter(idx => !favOnly || products[idx].favorite);
+
+  // 最愛排前面
+  visibleIndexes.sort((a, b) => {
+    const favA = products[a].favorite ? 1 : 0;
+    const favB = products[b].favorite ? 1 : 0;
+    return favB - favA;
+  });
 
   if(products.length === 0){
     empty.style.display = 'block';
     empty.textContent = '仲未有商品,喺上面加返個先啦';
   }else if(visibleIndexes.length === 0){
     empty.style.display = 'block';
-    empty.textContent = '搵唔到相關商品';
+    empty.textContent = favOnly ? '仲未標低最愛商品,撳個☆就得' : '搵唔到相關商品';
   }else{
     empty.style.display = 'none';
   }
@@ -472,6 +506,7 @@ function render(){
       <div class="item-top">
         <div class="item-name">${p.name}</div>
         <div class="item-actions">
+          <button class="star-btn" data-action="favorite" data-idx="${idx}">${p.favorite ? '⭐' : '☆'}</button>
           <button class="icon-btn" data-action="history" data-idx="${idx}">歷史</button>
           <button class="icon-btn" data-action="update" data-idx="${idx}">更新價錢</button>
           <button class="icon-btn danger" data-action="delete" data-idx="${idx}">刪除</button>
@@ -514,7 +549,11 @@ function render(){
 function onAction(e){
   const idx = Number(e.currentTarget.dataset.idx);
   const action = e.currentTarget.dataset.action;
-  if(action === 'delete'){
+  if(action === 'favorite'){
+    products[idx].favorite = !products[idx].favorite;
+    save();
+    render();
+  }else if(action === 'delete'){
     if(confirm(`刪除「${products[idx].name}」?`)){
       products.splice(idx, 1);
       save();
@@ -607,6 +646,11 @@ function mergeImportedProducts(imported){
 }
 
 document.getElementById('searchBox').addEventListener('input', () => {
+  render();
+});
+
+document.getElementById('favFilterBtn').addEventListener('click', (e) => {
+  e.currentTarget.classList.toggle('active');
   render();
 });
 
